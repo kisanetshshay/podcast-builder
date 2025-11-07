@@ -1,10 +1,17 @@
 
+
 'use client';
 
 import { useEffect, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
-export default function AudioPlayer({ audioUrl }: { audioUrl: string }) {
+export default function AudioPlayer({
+  audioUrl,
+  onTimeUpdate,
+}: {
+  audioUrl: string;
+  onTimeUpdate?: (time: number) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
 
@@ -14,11 +21,6 @@ export default function AudioPlayer({ audioUrl }: { audioUrl: string }) {
     }
 
     if (!audioUrl || !containerRef.current) return;
-
-    if (!audioUrl.startsWith('blob:')) {
-      console.error('Invalid audio URL:', audioUrl);
-      return;
-    }
 
     const ws = WaveSurfer.create({
       container: containerRef.current,
@@ -32,15 +34,23 @@ export default function AudioPlayer({ audioUrl }: { audioUrl: string }) {
 
     wavesurferRef.current = ws;
 
+    let animationFrameId: number;
+    const update = () => {
+      if (onTimeUpdate && ws) {
+        onTimeUpdate(ws.getCurrentTime());
+      }
+      animationFrameId = requestAnimationFrame(update);
+    };
+    animationFrameId = requestAnimationFrame(update);
+
     return () => {
+      cancelAnimationFrame(animationFrameId);
       ws.destroy();
     };
-  }, [audioUrl]);
+  }, [audioUrl, onTimeUpdate]);
 
   const playPause = () => {
-    if (wavesurferRef.current) {
-      wavesurferRef.current.playPause();
-    }
+    wavesurferRef.current?.playPause();
   };
 
   const skip = (seconds: number) => {
